@@ -206,6 +206,9 @@ State* RiverCrossing::solve() {
             }
             
             delete[] path;
+
+            double elapsed = getElapsedSeconds();
+            std::cout << "Tiempo total: " << elapsed << " s\n";
             break;
         }
 
@@ -217,4 +220,5 @@ State* RiverCrossing::solve() {
     }
 
     return best;
+
 }

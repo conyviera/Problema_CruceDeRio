@@ -9,10 +9,6 @@ class RiverCrossing {
     Heap* open;
     Stack* closed;
     
-    // Variables para control de tiempo
-    std::chrono::steady_clock::time_point start_time;
-    const int timeout_seconds = 60;  // 1 minuto
-    
     // Estructura para movimientos temporales
     struct TmpMove { int k1, k2; };
     static const int MAXB = 8;
@@ -29,4 +25,9 @@ public:
     RiverCrossing(int m);
     ~RiverCrossing();
     State* solve();
+
+    private:
+    std::chrono::steady_clock::time_point start_time;    // ➌
+    const int timeout_seconds = 60;                      //   (si no está)
+
 };
