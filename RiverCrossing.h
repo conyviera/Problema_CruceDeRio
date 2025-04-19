@@ -1,13 +1,18 @@
 #pragma once
+#include "State.h"
 #include "Heap.h"
 #include "Stack.h"
 
 class RiverCrossing {
+    int maxStates;
     Heap* open;
     Stack* closed;
-    int maxStates;
+    
+    int computeHeuristic(State* s);
+    
 public:
-    RiverCrossing(int maxStates=100000);
+    RiverCrossing(int m);
     ~RiverCrossing();
     State* solve();
+    bool isSafe(const State* s) const;
 };

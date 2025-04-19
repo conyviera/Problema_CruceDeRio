@@ -62,3 +62,16 @@ void State::printState() const {
     std::cout<<"\nDerecha:   "; for(int k=0;k<I;++k) if(itemSide[k]) std::cout<<k<<' ';
     std::cout<<"\n---\n";
 }
+
+State* State::cross(int b,int k1,int k2){
+    if (capacity[b] < 2) return nullptr;
+    bool src = boatSide[b], dst = !src;
+    if (itemSide[k1]!=src || itemSide[k2]!=src) return nullptr;
+    State* n = clone();
+    n->boatSide[b]=dst;
+    n->itemSide[k1]=dst;
+    n->itemSide[k2]=dst;
+    if(--n->remTrips[b]<0){ delete n; return nullptr; }
+    if(!n->isValid()) { delete n; return nullptr; }
+    return n;
+}

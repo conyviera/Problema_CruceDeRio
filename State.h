@@ -19,6 +19,7 @@ public:
     bool   isValid() const;
     bool   isFinal() const;
     State* cross(int boatIdx, int itemIdx);
+    State* cross(int boatIdx,int k1,int k2); 
     bool   operator==(State const& o) const;
     void   printState() const;
 };
