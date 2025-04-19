@@ -15,4 +15,11 @@ public:
     ~RiverCrossing();
     State* solve();
     bool isSafe(const State* s) const;
+private:
+    void applyAndPush(State* base, HeapNode* parent,
+    int g, int uptoBoat);
+
+    void expandAllBoats(State* base, HeapNode* parent,
+      int g, int boatIdx);
+
 };
