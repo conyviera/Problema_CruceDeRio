@@ -1,33 +1,34 @@
-#pragma once
+
+// RiverCrossing.h
+#ifndef RIVERCROSSING_H
+#define RIVERCROSSING_H
+
+#include <climits>
+#include <iostream>
 #include "State.h"
 #include "Heap.h"
 #include "Stack.h"
-#include <chrono>
+
+struct TmpMove { int k1, k2; };
 
 class RiverCrossing {
-    int maxStates;
-    Heap* open;
-    Stack* closed;
-    
-    // Estructura para movimientos temporales
-    struct TmpMove { int k1, k2; };
-    static const int MAXB = 8;
-    TmpMove choice[MAXB];  // elección para cada bote
-    
-    // Métodos privados
-    double getElapsedSeconds();
-    void applyAndPush(State* s, HeapNode* parent, int g, int uptoBoat, int moved);
-    void expandAllBoats(State* s, HeapNode* parent, int g, int b, int moved);
-    bool isSafe(const State* s) const;
-    int computeHeuristic(State* s);
-
 public:
-    RiverCrossing(int m);
+    explicit RiverCrossing(int maxStates);
     ~RiverCrossing();
     State* solve();
 
-    private:
-    std::chrono::steady_clock::time_point start_time;    // ➌
-    const int timeout_seconds = 60;                      //   (si no está)
+private:
+    bool isSafe(const State* s) const;
+    int computeHeuristic(State* s) const;
+    void applyAndPush(State* s, HeapNode* parent, int g, int uptoBoat);
+    void expandAllBoats(State* s, HeapNode* parent, int g, int b);
+    void printStateFormatted(const State* s) const;
+    static void printSolution(HeapNode* node);
 
+    Heap*     open;
+    Stack*    closed;
+    int       maxStates;
+    TmpMove*  choice;
 };
+
+#endif // RIVERCROSSING_H

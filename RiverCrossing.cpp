@@ -1,224 +1,204 @@
 #include "RiverCrossing.h"
-#include <climits>
 #include <iostream>
+#include <climits>
+#include <chrono>
 
-double RiverCrossing::getElapsedSeconds() {
-    auto current_time = std::chrono::steady_clock::now();
-    return std::chrono::duration_cast<std::chrono::seconds>(
-        current_time - start_time).count();
-}
-
-RiverCrossing::RiverCrossing(int m) : maxStates(m) {
-    open = new Heap(m);
-    closed = new Stack(m);
-    start_time = std::chrono::steady_clock::now();
-}
-
-RiverCrossing::~RiverCrossing() { 
-    delete open; 
-    delete closed; 
-}
-
-void RiverCrossing::applyAndPush(State* s, HeapNode* parent,
-    int g, int uptoBoat, int moved) {
-    if (moved == 0) return;
-
-    State* ns = s->clone();
-    for (int b = 0; b <= uptoBoat; ++b) {
-        if (choice[b].k1 == -2) continue;
-
-        ns->boatSide[b] ^= 1;
-        --ns->remTrips[b];
-
-        if (choice[b].k1 >= 0) ns->itemSide[choice[b].k1] ^= 1;
-        if (choice[b].k2 >= 0) ns->itemSide[choice[b].k2] ^= 1;
+// helper para imprimir estado formateado
+void RiverCrossing::printStateFormatted(const State* s) const {
+    std::cout << "Botes: ";
+    for (int b = 0; b < State::B; ++b) {
+        std::cout << (s->boatSide[b] ? 'R' : 'L');
+        if (b + 1 < State::B) std::cout << '/';
     }
-
-    if (!ns->isValid() || !isSafe(ns)) { 
-        delete ns; 
-        return; 
-    }
-    
-    if (!closed->find(ns)) {
-        int h = computeHeuristic(ns);
-        open->push(new HeapNode{ns, g+1, g+1+h, parent, nullptr});
-        closed->push(ns);
-    } else {
-        delete ns;
-    }
-}
-
-/* --------- recursión sobre cada bote --------------------- */
-void RiverCrossing::expandAllBoats(State* s, HeapNode* parent,
-                                   int g, int b, int moved)
-{
-    if (b == State::B) {                  // todos decididos
-        applyAndPush(s, parent, g, b-1, moved);
-        return;
-    }
-
-    if (s->remTrips[b] == 0) {            // sin combustible
-        choice[b] = {-2,-2};
-        expandAllBoats(s,parent,g,b+1,moved);
-        return;
-    }
-
-    bool side     = s->boatSide[b];
-    int  capacity = State::capacity[b];
-
-    /* 1) bote quieto  ------------------------------------ */
-    choice[b] = {-2,-2};
-    expandAllBoats(s,parent,g,b+1,moved);
-
-    /* 2) llevar 1 ítem (el primero que encuentre) -------- */
-    int first = -1;
-    for (int k = 0; k < State::I && first==-1; ++k)
-        if (s->itemSide[k] == side) first = k;
-
-    if (first != -1) {
-        choice[b] = {first,-1};
-        expandAllBoats(s,parent,g,b+1,moved+1);
-
-        /* 3) llevar 2 ítems (primer par compatible) ------ */
-        if (capacity >= 2) {
-            int second = -1;
-            for (int k = first+1; k < State::I && second==-1; ++k)
-                if (s->itemSide[k] == side &&
-                    !State::incompatible[first][k])
-                    second = k;
-
-            if (second != -1) {
-                choice[b] = {first, second};
-                expandAllBoats(s,parent,g,b+1,moved+2);
-            }
+    std::cout << '\n';
+    std::cout << "Izquierda: ";
+    bool first = true;
+    for (int i = 0; i < State::I; ++i) {
+        if (!s->itemSide[i]) {
+            if (!first) std::cout << ' ';
+            std::cout << i;
+            first = false;
         }
     }
+    std::cout << '\n';
+
+    std::cout << "Derecha:   ";
+    first = true;
+    for (int i = 0; i < State::I; ++i) {
+        if (s->itemSide[i]) {
+            if (!first) std::cout << ' ';
+            std::cout << i;
+            first = false;
+        }
+    }
+    std::cout << "\n---\n";
+}
+
+RiverCrossing::RiverCrossing(int maxStates_)
+  : open(nullptr), closed(nullptr), maxStates(maxStates_), choice(nullptr) {
+    open = new Heap(maxStates);
+    closed = new Stack(maxStates);
+    choice = new TmpMove[State::B];
+    for (int b = 0; b < State::B; ++b)
+        choice[b] = TmpMove{-2, -2};
+
+    State* init = new State();
+    for (int k = 0; k < State::I; ++k) init->itemSide[k] = false;
+    for (int b = 0; b < State::B; ++b) {
+        init->boatSide[b] = false;
+        init->remTrips[b] = State::maxTrips[b];
+    }
+    if (!init->isValid() || !isSafe(init)) {
+        std::cout << "Estado inicial inválido.\n";
+        delete init;
+        return;
+    }
+    int h0 = computeHeuristic(init);
+    open->push(new HeapNode{init, 0, h0, nullptr, nullptr});
+    closed->push(init);
+}
+
+RiverCrossing::~RiverCrossing() {
+    delete[] choice;
+    delete open;
+    delete closed;
 }
 
 bool RiverCrossing::isSafe(const State* s) const {
     for (int side = 0; side <= 1; ++side) {
-        bool boat = false;
-        for (int b = 0; b < State::B && !boat; ++b)
-            if (s->boatSide[b] == side) boat = true;
-        if (boat) continue;
-        
+        bool boat_here = false;
+        for (int b = 0; b < State::B; ++b) {
+            if (s->boatSide[b] == side) { boat_here = true; break; }
+        }
+        if (boat_here) continue;
         for (int i = 0; i < State::I; ++i) {
-            if (s->itemSide[i] == side) {
-                for (int j = i+1; j < State::I; ++j) {
-                    if (s->itemSide[j] == side && State::incompatible[i][j])
-                        return false;
-                }
+            if (s->itemSide[i] != side) continue;
+            for (int j = i + 1; j < State::I; ++j) {
+                if (s->itemSide[j] == side && State::incompatible[i][j])
+                    return false;
             }
         }
     }
     return true;
 }
 
-int RiverCrossing::computeHeuristic(State* s) {
+int RiverCrossing::computeHeuristic(State* s) const {
     const int INF = INT_MAX;
     int remaining = 0;
-    
-    for (int k = 0; k < State::I; ++k) 
-        if (!s->itemSide[k]) 
-            ++remaining;
-    
-    if (!remaining) return 0;
+    for (int k = 0; k < State::I; ++k)
+        if (!s->itemSide[k]) ++remaining;
+    if (remaining == 0) return 0;
 
-    bool boat = false;
-    int max_cap = 0;
+    bool boat_avail = false;
+    int kmax = 0;
     for (int b = 0; b < State::B; ++b) {
         if (!s->boatSide[b] && s->remTrips[b] > 0) {
-            boat = true;
-            if (State::capacity[b] > max_cap) {
-                max_cap = State::capacity[b];
+            boat_avail = true;
+            if (State::capacity[b] > kmax) kmax = State::capacity[b];
+        }
+    }
+    if (!boat_avail) return INF;
+
+    int trips = (remaining + kmax - 1) / kmax;
+    if (!isSafe(s)) trips += 10;
+    return 2 * trips - 1;
+}
+
+void RiverCrossing::applyAndPush(State* s, HeapNode* parent, int g, int uptoBoat) {
+    // 1) filtrar pasos sin movimiento
+    bool anyMove = false;
+    for (int b = 0; b < uptoBoat; ++b) {
+        if (choice[b].k1 != -2) { anyMove = true; break; }
+    }
+    if (!anyMove) return;
+
+    // 2) clonar y aplicar los movimientos
+    State* ns = s->clone();
+    for (int b = 0; b < uptoBoat; ++b) {
+        if (choice[b].k1 == -2) continue;
+        ns->boatSide[b] ^= 1;
+        --ns->remTrips[b];
+        if (choice[b].k1 >= 0) ns->itemSide[choice[b].k1] ^= 1;
+        if (choice[b].k2 >= 0) ns->itemSide[choice[b].k2] ^= 1;
+    }
+    if (!ns->isValid() || !isSafe(ns)) {
+        delete ns;
+        return;
+    }
+
+    // 3) heurística
+    int h = computeHeuristic(ns);
+
+    // 4) ¡ANTES de empujar! comprobamos que no esté ya en closed
+    if (!closed->find(ns)) {
+        open->push(new HeapNode{ns, g + 1, g + 1 + h, parent, nullptr});
+        closed->push(ns);
+    } else {
+        delete ns;
+    }
+}
+
+
+void RiverCrossing::expandAllBoats(State* s, HeapNode* parent, int g, int b) {
+    if (b >= State::B) {
+        applyAndPush(s, parent, g, State::B);
+        return;
+    }
+    if (s->remTrips[b] == 0) {
+        choice[b] = TmpMove{-2, -2};
+        expandAllBoats(s, parent, g, b + 1);
+        return;
+    }
+
+    bool side = s->boatSide[b];
+    choice[b] = TmpMove{-1, -1};
+    expandAllBoats(s, parent, g, b + 1);
+
+    for (int k = 0; k < State::I; ++k) {
+        if (s->itemSide[k] == side) {
+            choice[b] = TmpMove{k, -1};
+            expandAllBoats(s, parent, g, b + 1);
+        }
+    }
+
+    if (State::capacity[b] >= 2) {
+        for (int k1 = 0; k1 < State::I; ++k1) {
+            if (s->itemSide[k1] != side) continue;
+            for (int k2 = k1 + 1; k2 < State::I; ++k2) {
+                if (s->itemSide[k2] == side && !State::incompatible[k1][k2]) {
+                    choice[b] = TmpMove{k1, k2};
+                    expandAllBoats(s, parent, g, b + 1);
+                }
             }
         }
     }
-    
-    if (!boat) return INF;
-
-    int min_trips = (remaining + max_cap - 1) / max_cap;
-    
-    if (!isSafe(s)) min_trips += State::I;
-    
-    return 2 * min_trips - 1;
 }
 
 State* RiverCrossing::solve() {
-    State* init = new State();
-    for (int k = 0; k < State::I; ++k) 
-        init->itemSide[k] = false;
-    for (int b = 0; b < State::B; ++b) { 
-        init->boatSide[b] = false; 
-        init->remTrips[b] = State::maxTrips[b]; 
+    auto t0 = std::chrono::steady_clock::now();
+    HeapNode* goalNode = nullptr;
+    while (HeapNode* node = open->pop()) {
+        if (node->s->isFinal()) { goalNode = node; break; }
+        expandAllBoats(node->s, node, node->g, 0);
     }
-
-    if (!init->isValid() || !isSafe(init)) {
-        std::cout << "Estado inicial inválido\n";
-        delete init;
+    if (!goalNode) {
+        std::cout << "No se encontró solución.\n";
         return nullptr;
     }
-
-    int h0 = computeHeuristic(init);
-    open->push(new HeapNode{init, 0, h0, nullptr, nullptr});
-    closed->push(init);
-    
-    State* best = nullptr;
-    int bestCost = INT_MAX;
-    int expanded = 0;
-
-    while (HeapNode* node = open->pop()) {
-        ++expanded;
-        
-        // Verificación de tiempo
-        if (expanded % 1000 == 0 && getElapsedSeconds() > timeout_seconds) {
-            std::cout << "Tiempo excedido (" << expanded << " estados explorados)\n";
-            delete node->s;
-            delete node;
-            break;
-        }
-
-        State* s = node->s;
-        int g = node->g;
-        
-        if (g >= bestCost) {
-            delete s;
-            continue;
-        }
-            
-        if (s->isFinal()) {
-            best = s;
-            bestCost = g;
-            
-            // Reconstrucción del camino
-            int len = 0;
-            for (HeapNode* c = node; c; c = c->parent) ++len;
-            
-            State** path = new State*[len];
-            int idx = len - 1;
-            for (HeapNode* c = node; c; c = c->parent) 
-                path[idx--] = c->s;
-
-            std::cout << "\nSOLUCIÓN (" << g << " cruces, " << expanded << " estados)\n";
-            for (int i = 0; i < len; ++i) {
-                std::cout << "Paso " << i << ":\n";
-                path[i]->printState();
-            }
-            
-            delete[] path;
-
-            double elapsed = getElapsedSeconds();
-            std::cout << "Tiempo total: " << elapsed << " s\n";
-            break;
-        }
-
-        expandAllBoats(s, node, g, 0, 0);
+    int length = 0;
+    for (HeapNode* cur = goalNode; cur; cur = cur->parent) ++length;
+    State** path = new State*[length];
+    int idx = length - 1;
+    for (HeapNode* cur = goalNode; cur; cur = cur->parent) {
+        path[idx--] = cur->s;
     }
-
-    if (!best) {
-        std::cout << "No se encontró solución tras " << expanded << " estados.\n";
+    for (int i = 0; i < length; ++i) {
+        std::cout << "Paso " << i << ":\n";
+        printStateFormatted(path[i]);
     }
-
-    return best;
-
+    delete[] path;
+    auto t1 = std::chrono::steady_clock::now();
+    double secs = std::chrono::duration<double>(t1 - t0).count();
+    std::cout << "Tiempo total: " << secs << " s\n";
+    return goalNode->s;
 }
