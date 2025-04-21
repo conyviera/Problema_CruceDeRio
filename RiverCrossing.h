@@ -1,34 +1,39 @@
-
-// RiverCrossing.h
 #ifndef RIVERCROSSING_H
 #define RIVERCROSSING_H
 
-#include <climits>
-#include <iostream>
 #include "State.h"
 #include "Heap.h"
 #include "Stack.h"
 
-struct TmpMove { int k1, k2; };
-
+/**
+ * Clase que resuelve el problema de cruce de río con múltiples barcos usando A*.
+ */
 class RiverCrossing {
 public:
-    explicit RiverCrossing(int maxStates);
+    /// Constructor: máximo de estados simultáneos en open.
+    RiverCrossing(int maxStates);
     ~RiverCrossing();
+
+    /// Ejecuta A* y devuelve puntero al estado final (o nullptr si no hay solución).
     State* solve();
 
+    /// Para depuración: imprime la solución completa desde el inicial.
+    void printSolution(HeapNode* node);
+    void printStateFormatted(const State* s);
+
 private:
+    Heap* open;          // Cola de prioridad A*
+    Stack* closed;       // Estados ya visitados
+    int maxStates;
+
+    // Seguridad e heurística
     bool isSafe(const State* s) const;
     int computeHeuristic(State* s) const;
-    void applyAndPush(State* s, HeapNode* parent, int g, int uptoBoat);
-    void expandAllBoats(State* s, HeapNode* parent, int g, int b);
-    void printStateFormatted(const State* s) const;
-    static void printSolution(HeapNode* node);
 
-    Heap*     open;
-    Stack*    closed;
-    int       maxStates;
-    TmpMove*  choice;
+    // Expansión: cruce simultáneo de todos los barcos
+    void expandAllBoats(State* s, HeapNode* parent, int g);
+    void packBoat(int b, State* s, HeapNode* parent, int g);
+    void loadItems(int b, int idx, State* s, HeapNode* parent, int g);
 };
 
 #endif // RIVERCROSSING_H

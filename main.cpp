@@ -60,9 +60,9 @@ int main(int argc, char** argv) {
             State::incompatible[j][k] = true;
         }
     }
-
+    std::cout << "SE COMENZO A EJECUTAR\n";
     // 6) Ejecutar A*
-    RiverCrossing solver(200000);
+    RiverCrossing solver(2000000);
     State* sol = solver.solve();
     if (!sol) {
         std::cout << "Sin solución.\n";
