@@ -22,17 +22,28 @@ State* State::clone() const {
     std::memcpy(n->remTrips,  remTrips,  B*sizeof(int));
     return n;
 }
+
+
 bool State::isValid() const {
-    for(int k=0;k<I;++k) for(int j=k+1;j<I;++j) {
-        if (!incompatible[k][j]) continue;
-        if (itemSide[k]==itemSide[j]) {
-            bool boatThere = false;
-            for(int b=0;b<B;++b) if (boatSide[b]==itemSide[k]) { boatThere=true; break; }
-            if (!boatThere) return false;
+    for (int k = 0; k < I; ++k) {
+        for (int j = k + 1; j < I; ++j) {
+            if (!incompatible[k][j]) continue;
+            if (itemSide[k] == itemSide[j]) {
+                bool boatThere = false;
+                for (int b = 0; b < B; ++b) {
+                    if (boatSide[b] == itemSide[k] && remTrips[b] > 0) {
+                        boatThere = true;
+                        break;
+                    }
+                }
+                if (!boatThere) return false;
+            }
         }
     }
     return true;
 }
+
+
 bool State::isFinal() const {
     for(int k=0;k<I;++k) if(!itemSide[k]) return false;
     return true;
@@ -74,4 +85,15 @@ State* State::cross(int b,int k1,int k2){
     if(--n->remTrips[b]<0){ delete n; return nullptr; }
     if(!n->isValid()) { delete n; return nullptr; }
     return n;
+}
+
+unsigned long long State::getHash() const {
+    unsigned long long hash = 0;
+    for (int i = 0; i < I; ++i) {
+        hash = (hash << 1) | itemSide[i];
+    }
+    for (int b = 0; b < B; ++b) {
+        hash = (hash << 1) | boatSide[b];
+    }
+    return hash;
 }

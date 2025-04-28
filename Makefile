@@ -1,18 +1,33 @@
-CXX = g++
-CXXFLAGS = -std=c++17 -O2 -Wall
-SRCS = main.cpp State.cpp Heap.cpp Stack.cpp RiverCrossing.cpp
-OBJS = $(SRCS:.cpp=.o)
-TARGET = river_solver
+# Makefile completo
 
-all: $(TARGET)
+all: State.o Heap.o Stack.o RiverCrossing.o testState testHeap testStack testRiverCrossing main
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+State.o: State.cpp State.h
+	g++ -g -c State.cpp
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+Heap.o: Heap.cpp Heap.h
+	g++ -g -c Heap.cpp
+
+Stack.o: Stack.cpp Stack.h
+	g++ -g -c Stack.cpp
+
+RiverCrossing.o: RiverCrossing.cpp RiverCrossing.h
+	g++ -g -c RiverCrossing.cpp
+
+testState: test_State.cpp State.o
+	g++ -g test_State.cpp State.o -o testState
+
+testHeap: test_Heap.cpp Heap.o State.o
+	g++ -g test_Heap.cpp Heap.o State.o -o testHeap
+
+testStack: test_Stack.cpp Stack.o State.o
+	g++ -g test_Stack.cpp Stack.o State.o -o testStack
+
+testRiverCrossing: test_RiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o
+	g++ -g test_RiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o -o testRiverCrossing
+
+main: main.cpp RiverCrossing.o Heap.o Stack.o State.o
+	g++ -g main.cpp RiverCrossing.o Heap.o Stack.o State.o -o main
 
 clean:
-	rm -f $(OBJS) $(TARGET)
-
-.PHONY: all clean
+	rm -f *.o testState testHeap testStack testRiverCrossing main
