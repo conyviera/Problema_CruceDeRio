@@ -14,17 +14,17 @@ Stack.o: Stack.cpp Stack.h
 RiverCrossing.o: RiverCrossing.cpp RiverCrossing.h
 	g++ -g -c RiverCrossing.cpp
 
-testState: test_State.cpp State.o
-	g++ -g test_State.cpp State.o -o testState
+testState: testState.cpp State.o
+	g++ -g testState.cpp State.o -o testState
 
-testHeap: test_Heap.cpp Heap.o State.o
-	g++ -g test_Heap.cpp Heap.o State.o -o testHeap
+testHeap: testHeap.cpp Heap.o State.o
+	g++ -g testHeap.cpp Heap.o State.o -o testHeap
 
-testStack: test_Stack.cpp Stack.o State.o
-	g++ -g test_Stack.cpp Stack.o State.o -o testStack
+testStack: testStack.cpp Stack.o State.o
+	g++ -g testStack.cpp Stack.o State.o -o testStack
 
-testRiverCrossing: test_RiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o
-	g++ -g test_RiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o -o testRiverCrossing
+testRiverCrossing: testRiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o
+	g++ -g testRiverCrossing.cpp RiverCrossing.o Heap.o Stack.o State.o -o testRiverCrossing
 
 main: main.cpp RiverCrossing.o Heap.o Stack.o State.o
 	g++ -g main.cpp RiverCrossing.o Heap.o Stack.o State.o -o main
